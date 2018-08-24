@@ -1,10 +1,9 @@
 FROM golang:latest
 
-WORKDIR /code
-VOLUME ./src:/code
-RUN go build ./filestat
+ADD  . /go/src/interview
+RUN go install interview/src/filestat
 #ENV GOPATH=/golib/
 #RUN /usr/local/go/bin/go get github.com/julienschmidt/httprouter
 #CMD /usr/local/go/bin/go run /code/app/main.go
 
-#EXPOSE 10004
+EXPOSE 8080

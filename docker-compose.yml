@@ -2,5 +2,10 @@ version: "3"
 
 services:
   app:
-    build: ./src/app/
-    command: go run /code/app/main.go
+    image: golang:1.6.1-alpine
+    volumes:
+      - ./src/:/go/src/
+    working_dir: /go/src/
+    ports:
+      - 8080:8080
+    command: go run ./app/main.go
