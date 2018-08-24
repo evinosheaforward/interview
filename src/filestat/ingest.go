@@ -1,14 +1,22 @@
 package filestat
 
+func Ingest() string {
+	return "Ingest"
+}
+
+/*
 import (
 	"bufio"
   "io"
   "os"
 )
 
+
 func Ingest(f io.Reader) {
   //magically run some parallelized / concurrent file reading
+	return "Ingest"
 }
+
 
 type chucker interface {
 	readChunk()
@@ -22,13 +30,13 @@ func readChunk(f *os.File, start int, stop int) {
 		//call another process to handle the kwd stuff for the line and store
 		go findKeywords(line)
   }
-	/*
+
 	scanner := bufio.NewScanner(file)
     for scanner.Scan() {
         jobs <- scanner.Text()
     }
     close(jobs)
-	*/
+
 }
 
 func (i ingester) ReadWrite() error {
@@ -48,3 +56,4 @@ func (i ingester) ReadWrite() error {
   for v := range results {
    counts += v
   }
+*/

@@ -3,13 +3,14 @@ package main
 import (
   "fmt"
   "io"
-  //filestat
+  "https://github.com/evinosheaforward/interview/tree/master/src/filestat"
 )
 
 //main function for running fileStat process
 //have either fileHandler or report come through channel
 func main() {
-  x =: make(chan io.Reader)
+	/*
+	x =: make(chan io.Reader)
   y =: make(chan io.Writer)
 
   go func() { r <- FileStreamer() }
@@ -28,5 +29,6 @@ func main() {
       }
       break
     }
-  fmt.PrintLn("Done")
+	*/
+  fmt.PrintLn(filestat.Ingest())
 }
