@@ -12,8 +12,8 @@ func main() {
   x =: make(chan io.Reader)
   y =: make(chan io.Writer)
 
-  go func() { r <- FileStreamer() }
-  go func() { w <- NewsManager()}
+  go func() { r <- Stream() }
+  go func() { w <- Manage()}
   while true:
     // I want FileStreamer and NewsManager to run concurrently
     select {
