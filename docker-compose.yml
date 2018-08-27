@@ -3,12 +3,14 @@ version: "3"
 services:
   db:
     image: postgres
+    hostname: db
     environment:
       POSTGRES_DB: dev
       POSTGRES_USER: postgres-dev
       POSTGRES_PASSWORD: s3cr3tp4ssw0rd
     ports:
       - 5432:5432
+    restart: always
   app:
     image: interview_app:latest
     volumes:
@@ -20,5 +22,5 @@ services:
       - db
     links:
       - db
-    command: ["go", "run", "main.go"]
+    command: ["go", "run", "../app/main.go"]
     #command: go run ./app/main.go

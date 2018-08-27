@@ -15,6 +15,10 @@ VOLUME ./src/:/go/src/
 # now copy your app to the proper build path
 ADD ./src $GOPATH/src/
 
+RUN  mkdir -p /data/input
+VOLUME ./data/input:/data/input
+ADD ./data /data
+
 # should be able to build now
 WORKDIR $GOPATH/src/filestat
 RUN go build -o filestat .

@@ -1,15 +1,19 @@
-package filestat
+package main
 
 import (
     "fmt"
     "net/http"
     "log"
+		"time"
+
+		"filestat"
 )
 
 func main() {
+		time.Sleep(5 * time.Second)
     http.HandleFunc("/", handle)
 		filestat.SetupDB()
-		fname := "/data"
+		fname := "/data/input/simple.txt"
 		fmt.Println("Ingesting file: %s", fname)
 		filestat.Ingest(fname)
     fmt.Println("Listening on :8080")
