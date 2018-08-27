@@ -1,10 +1,9 @@
-package main
+package filestat
 
 import (
     "fmt"
     "net/http"
     "log"
-		"filestat"
 )
 
 func main() {

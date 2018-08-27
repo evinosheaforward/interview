@@ -13,7 +13,7 @@ services:
     image: interview_app:latest
     volumes:
       - ./src/:/go/src/
-    working_dir: /go/src/app
+    working_dir: /go/src/filestat
     env_file:
       - ./postgres/app.env
     depends_on:
