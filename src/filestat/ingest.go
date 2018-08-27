@@ -2,34 +2,41 @@ package filestat
 
 import (
 	"bufio"
-	"io"
+	"github.com/gocql/gocql"
+	"log"
 	"os"
+	"regexp"
+	"sync"
 )
 
 type stream struct {
 	lines       chan string
-	file        os.File
+	file        *os.File
 	num_parsers int
+	session     gocql.Session
 	//conn var cql-db connection
 }
 
-func Ingest(fname string) {
+func Ingest(fname string, conn gocql.Session) {
 	// maybe pass the open file instead
 	f, err := os.Open(fname)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer file.Close()
-	s := stream{lines: make(chan string),
+	defer f.Close()
+	//make this configurable
+	nparsers := 2
+	s := stream{
+		lines:       make(chan string),
 		file:        f,
-		num_parsers: 2,
-		// conn: db connection
+		num_parsers: nparsers,
+		session:     conn,
 	}
 	defer close(s.lines)
 	var wg sync.WaitGroup
-	wg.Add(num_parsers*3 + 2)
+	wg.Add(nparsers*3 + 2)
 	go startParsers(s)
-	go s.Read(file)
+	go s.Read()
 	wg.Wait()
 }
 
@@ -44,37 +51,34 @@ func (s stream) Read() {
 }
 
 func startParsers(s stream) {
-	ln := make(chan string)
-	defer close(ln)
 	var wg sync.WaitGroup
 	wg.Add(s.num_parsers * 3)
-	for i := range s.num_parsers {
+	for i := 0; i < s.num_parsers; i++ {
 		go parse(s)
 	}
 	wg.Wait()
 }
 
-func parse(s stream) error {
+func parse(s stream) {
 	for line := range s.lines {
-		ln <- line
-		s.InsertInfo(ln)
+		s.InsertInfo(line)
 	}
 }
 
-func (s stream) InsertInfo(ln string) error {
+func (s stream) InsertInfo(line string) {
 	//s.connection.
-	h = hash(ln)
-	nc = len(ln)
-	nt = len(tokenize(ln))
+	h := hash(line)
+	nc := len(line)
+	nt := len(tokenize(line))
 	go s.InsertCounts(h, nc, nt)
-	go s.InsertKeywords(h, ln) // could ln be passed as pointer?
+	go s.InsertKeywords(h, line) // could ln be passed as pointer?
 }
 
-func (s stream) InsertCounts(h int, nc int, nt int) {
-	var out int
+func (s stream) InsertCounts(h uint32, nc int, nt int) {
+	out := -1
 	err := s.session.Query(`SELECT line_hash FROM LineInfo WHERE line_hash == ?`,
-		linehash).Exec().Scan(&out)
-	if out == nil {
+		h).Exec().Scan(&out)
+	if out != -1 {
 		s.session.Query(
 			`INSERT INTO LineInfo (line_hash, num_chars, num_tokens) VALUES (?, ?, ?)`,
 			h,
@@ -83,19 +87,19 @@ func (s stream) InsertCounts(h int, nc int, nt int) {
 		).Exec()
 	}
 	err := s.session.Query(`UPDATE KeywordInfo SET count = count + 1 WHERE hash = ?`,
-		hash(ln)).Exec()
+		h).Exec()
 }
 
-func (s stream) InsertKeywords(h int, ln string) {
-	for kwd := range s.Keywords() {
-		if strings.Contains(ln, kwd) {
+func (s stream) InsertKeywords(h uint32, ln string) {
+	for keyword := range s.Keywords() {
+		if strings.Contains(ln, keyword) {
 			s.session.Query(`UPDATE KeywordInfo SET line_hashes = ? + line_hashes WHERE keyword = ?`,
-				hash(ln), kwd).Exec()
+				hash(ln), keyword).Exec()
 		}
 	}
 }
 
-func (s stream) Keywords() *Iter {
+func (s stream) Keywords() *gocql.Iter {
 	return s.session.Query(`SELECT keyword FROM KeywordInfo`).Exec().Inter()
 }
 
@@ -103,4 +107,9 @@ func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
+}
+
+func tokenize(ln string) []string {
+	reg := regexp.MustCompile(`\w+(?:'\w+)?|[^\w\s]`)
+	return reg.FindAllStringIndex(ln, -1)
 }
