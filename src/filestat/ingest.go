@@ -2,110 +2,105 @@ package filestat
 
 import (
 	"bufio"
-  "io"
-  "os"
+	"io"
+	"os"
 )
 
-func RunFile
-	// maybe pass the open file instead
-	file, err := os.Open(f)
-	if err != nil {
-			log.Fatal(err)
-	}
-	defer file.Close()
-
-type stream interface {
-	Read()
+type stream struct {
+	lines       chan string
+	file        os.File
+	num_parsers int
+	//conn var cql-db connection
 }
 
-type stream struct {
-	chan string lines
+func Ingest(fname string) {
+	// maybe pass the open file instead
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	s := stream{lines: make(chan string),
+		file:        f,
+		num_parsers: 2,
+		// conn: db connection
+	}
+	defer close(s.lines)
+	var wg sync.WaitGroup
+	wg.Add(num_parsers*3 + 2)
+	go startParsers(s)
+	go s.Read(file)
+	wg.Wait()
 }
 
 func (s stream) Read() {
-		defer close(s)
-		scanner := bufio.NewScanner(s)
-		for scanner.Scan() {
-				lines <- scanner.Text()
+	scanner := bufio.NewScanner(s.file)
+	for scanner.Scan() {
+		s.lines <- scanner.Text()
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func startParsers(s stream) {
+	ln := make(chan string)
+	defer close(ln)
+	var wg sync.WaitGroup
+	wg.Add(s.num_parsers * 3)
+	for i := range s.num_parsers {
+		go parse(s)
+	}
+	wg.Wait()
+}
+
+func parse(s stream) error {
+	for line := range s.lines {
+		ln <- line
+		s.InsertInfo(ln)
+	}
+}
+
+func (s stream) InsertInfo(ln string) error {
+	//s.connection.
+	h = hash(ln)
+	nc = len(ln)
+	nt = len(tokenize(ln))
+	go s.InsertCounts(h, nc, nt)
+	go s.InsertKeywords(h, ln) // could ln be passed as pointer?
+}
+
+func (s stream) InsertCounts(h int, nc int, nt int) {
+	var out int
+	err := s.session.Query(`SELECT line_hash FROM LineInfo WHERE line_hash == ?`,
+		linehash).Exec().Scan(&out)
+	if out == nil {
+		s.session.Query(
+			`INSERT INTO LineInfo (line_hash, num_chars, num_tokens) VALUES (?, ?, ?)`,
+			h,
+			nc,
+			nt,
+		).Exec()
+	}
+	err := s.session.Query(`UPDATE KeywordInfo SET count = count + 1 WHERE hash = ?`,
+		hash(ln)).Exec()
+}
+
+func (s stream) InsertKeywords(h int, ln string) {
+	for kwd := range s.Keywords() {
+		if strings.Contains(ln, kwd) {
+			s.session.Query(`UPDATE KeywordInfo SET line_hashes = ? + line_hashes WHERE keyword = ?`,
+				hash(ln), kwd).Exec()
 		}
-		if err := scanner.Err(); err != nil {
-				log.Fatal(err)
-		}
+	}
 }
 
-func Ingest(f io.Reader) error {
-  lines := make(chan string)
-	defer close(lines)
-	//var wg sync.WaitGroup
-	s := stream{ lines }
-  go startParsers(lines)
-  go s.Read()
-}
-
-func startParsers(lines <-chan string) {
-    ln := make(chan string)
-		defer close(ln)
-		num_parsers = 2
-		p = parser{ ln }
-		for i := range num_parsers {
-			go p.Parse(lines)
-		}
-
-type parser interface {
-	Parse()
-	Info()
-	Keywords()
-}
-
-type parser struct {
-	string line
-}
-
-func (p parser) Parse(lines <-chan string) error {
-		for line := range lines {
-				ln <- line
-				//?go storeInfo(ln)
-				//?go ingestKwds(ln)
-				p.Info(ln)
-				p.Keywords(ln)
-		}
-}
-
-func (p parser) Info(line string) error {
-	h = hash(line)
-
-	nc = len(line)
-	nt = len(tokenize(line))
+func (s stream) Keywords() *Iter {
+	return s.session.Query(`SELECT keyword FROM KeywordInfo`).Exec().Inter()
 }
 
 func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
-}
-
-func (ln line) Record(ln string) {
-	h = hash(ln)
-	if check(h) {
-		nc = len(ln)
-		nt = len(tokenize(ln))
-		go kwdInfo(*ln)
-	}
-	  updateCount(h)
-}
-
-func updateCount(h int) {
-	//update the counts wherever kwd comes up
-}
-
-func kwdInfo(ln *string, h int) {
-  for kwd := range keywords {
-		if strings.Contains(ln, kwd) {
-        err = addHash(h)
-    }
-	}
-}
-
-func addHash(h int) error {
-
 }
