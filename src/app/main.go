@@ -1,14 +1,26 @@
 package main
 
 import (
-  "fmt"
-  "filestat"
+    "fmt"
+    "net/http"
+    "log"
+		"filestat"
 )
 
-//main function for running fileStat process
-//have either fileHandler or report come through channel
 func main() {
-	fmt.Println(filestat.Ingest())
+    http.HandleFunc("/", handle)
+		filestat.SetupDB()
+		fname := "/data"
+		fmt.Println("Ingesting file: %s", fname)
+		filestat.Ingest(fname)
+    fmt.Println("Listening on :8080")
+    log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func handle(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Hello from Docker")
+	fmt.Println("OH DOH DOH")
+	log.Println("OH DOH DOH")
 }
 
 	/*

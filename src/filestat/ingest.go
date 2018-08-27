@@ -1,36 +1,40 @@
 package filestat
 
 import (
+	//"fmt"
 	"bufio"
-	"github.com/gocql/gocql"
+	"hash/fnv"
+	"io"
 	"log"
 	"os"
-	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 )
 
+
 type stream struct {
+	io.Reader
 	lines       chan string
 	file        *os.File
 	num_parsers int
-	session     gocql.Session
-	//conn var cql-db connection
+	db          pgdb
+	//db          cassdb
 }
 
-func Ingest(fname string, conn gocql.Session) {
+func Ingest(fname string) {
 	// maybe pass the open file instead
 	f, err := os.Open(fname)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer f.Close()
-	//make this configurable
-	nparsers := 2
+	nparsers, _ := strconv.Atoi(os.Getenv("NUM_PARSERS"))
 	s := stream{
 		lines:       make(chan string),
 		file:        f,
 		num_parsers: nparsers,
-		session:     conn,
+		db:          NewDBConn(),
 	}
 	defer close(s.lines)
 	var wg sync.WaitGroup
@@ -66,50 +70,15 @@ func parse(s stream) {
 }
 
 func (s stream) InsertInfo(line string) {
-	//s.connection.
 	h := hash(line)
 	nc := len(line)
-	nt := len(tokenize(line))
-	go s.InsertCounts(h, nc, nt)
-	go s.InsertKeywords(h, line) // could ln be passed as pointer?
-}
-
-func (s stream) InsertCounts(h uint32, nc int, nt int) {
-	out := -1
-	err := s.session.Query(`SELECT line_hash FROM LineInfo WHERE line_hash == ?`,
-		h).Exec().Scan(&out)
-	if out != -1 {
-		s.session.Query(
-			`INSERT INTO LineInfo (line_hash, num_chars, num_tokens) VALUES (?, ?, ?)`,
-			h,
-			nc,
-			nt,
-		).Exec()
-	}
-	err := s.session.Query(`UPDATE KeywordInfo SET count = count + 1 WHERE hash = ?`,
-		h).Exec()
-}
-
-func (s stream) InsertKeywords(h uint32, ln string) {
-	for keyword := range s.Keywords() {
-		if strings.Contains(ln, keyword) {
-			s.session.Query(`UPDATE KeywordInfo SET line_hashes = ? + line_hashes WHERE keyword = ?`,
-				hash(ln), keyword).Exec()
-		}
-	}
-}
-
-func (s stream) Keywords() *gocql.Iter {
-	return s.session.Query(`SELECT keyword FROM KeywordInfo`).Exec().Inter()
+	nt := len(strings.Fields(line))
+	go s.db.InsertCounts(h, nc, nt)
+	go s.db.InsertKeywords(h, line) // could ln be passed as pointer?
 }
 
 func hash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
-}
-
-func tokenize(ln string) []string {
-	reg := regexp.MustCompile(`\w+(?:'\w+)?|[^\w\s]`)
-	return reg.FindAllStringIndex(ln, -1)
 }

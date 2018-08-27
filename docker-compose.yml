@@ -1,11 +1,24 @@
 version: "3"
 
 services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_DB: dev
+      POSTGRES_USER: postgres-dev
+      POSTGRES_PASSWORD: s3cr3tp4ssw0rd
+    ports:
+      - 5432:5432
   app:
-    build: .
+    image: interview_app:latest
     volumes:
       - ./src/:/go/src/
-    working_dir: /go/src/
-    ports:
-      - 8080:8080
-    command: go run ./app/main.go
+    working_dir: /go/src/app
+    env_file:
+      - ./postgres/app.env
+    depends_on:
+      - db
+    links:
+      - db
+    command: ["go", "run", "main.go"]
+    #command: go run ./app/main.go
