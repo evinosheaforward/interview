@@ -1,59 +1,106 @@
 package filestat
 
-func Ingest() string {
-	return "Ingest"
-}
-
-/*
 import (
 	"bufio"
-  "io"
-  "os"
+	"io"
+	"os"
 )
 
-
-func Ingest(f io.Reader) {
-  //magically run some parallelized / concurrent file reading
-	return "Ingest"
+type stream struct {
+	lines       chan string
+	file        os.File
+	num_parsers int
+	//conn var cql-db connection
 }
 
-
-type chucker interface {
-	readChunk()
+func Ingest(fname string) {
+	// maybe pass the open file instead
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	s := stream{lines: make(chan string),
+		file:        f,
+		num_parsers: 2,
+		// conn: db connection
+	}
+	defer close(s.lines)
+	var wg sync.WaitGroup
+	wg.Add(num_parsers*3 + 2)
+	go startParsers(s)
+	go s.Read(file)
+	wg.Wait()
 }
 
-//This is not right at all... but outlines the idea
-func readChunk(f *os.File, start int, stop int) {
-  for line := range f.Read(start, stop) {
-		//call process to put length of line, hash? the line, num tokens in db
-		go storeInfo(line)
-		//call another process to handle the kwd stuff for the line and store
-		go findKeywords(line)
-  }
-
-	scanner := bufio.NewScanner(file)
-    for scanner.Scan() {
-        jobs <- scanner.Text()
-    }
-    close(jobs)
-
+func (s stream) Read() {
+	scanner := bufio.NewScanner(s.file)
+	for scanner.Scan() {
+		s.lines <- scanner.Text()
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
 }
 
-func (i ingester) ReadWrite() error {
-	// want to break into multiple file readers
-	// when a filereader recieved on write
-  go readChunk()
+func startParsers(s stream) {
+	ln := make(chan string)
+	defer close(ln)
+	var wg sync.WaitGroup
+	wg.Add(s.num_parsers * 3)
+	for i := range s.num_parsers {
+		go parse(s)
+	}
+	wg.Wait()
+}
 
-	// Collect all the results...
-	// First, make sure we close the result channel when everything was processed
-	go func() {
-   wg.Wait()
-   close(results)
-  }()
+func parse(s stream) error {
+	for line := range s.lines {
+		ln <- line
+		s.InsertInfo(ln)
+	}
+}
 
-  // Now, add up the results from the results channel until closed
-  counts := 0
-  for v := range results {
-   counts += v
-  }
-*/
+func (s stream) InsertInfo(ln string) error {
+	//s.connection.
+	h = hash(ln)
+	nc = len(ln)
+	nt = len(tokenize(ln))
+	go s.InsertCounts(h, nc, nt)
+	go s.InsertKeywords(h, ln) // could ln be passed as pointer?
+}
+
+func (s stream) InsertCounts(h int, nc int, nt int) {
+	var out int
+	err := s.session.Query(`SELECT line_hash FROM LineInfo WHERE line_hash == ?`,
+		linehash).Exec().Scan(&out)
+	if out == nil {
+		s.session.Query(
+			`INSERT INTO LineInfo (line_hash, num_chars, num_tokens) VALUES (?, ?, ?)`,
+			h,
+			nc,
+			nt,
+		).Exec()
+	}
+	err := s.session.Query(`UPDATE KeywordInfo SET count = count + 1 WHERE hash = ?`,
+		hash(ln)).Exec()
+}
+
+func (s stream) InsertKeywords(h int, ln string) {
+	for kwd := range s.Keywords() {
+		if strings.Contains(ln, kwd) {
+			s.session.Query(`UPDATE KeywordInfo SET line_hashes = ? + line_hashes WHERE keyword = ?`,
+				hash(ln), kwd).Exec()
+		}
+	}
+}
+
+func (s stream) Keywords() *Iter {
+	return s.session.Query(`SELECT keyword FROM KeywordInfo`).Exec().Inter()
+}
+
+func hash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
