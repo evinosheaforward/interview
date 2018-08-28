@@ -47,44 +47,7 @@ func (pg pgdb) InsertKeywords(h uint32, ln string) {
 			}
 	}
 }
-/* struct for cass db that is a dbconn
-type cassdb struct {
-  dbconn
-  db gocql.session
-}
 
-func (db cassdb) InsertCounts(h uint32, nc int, nt int) {
-	out := -1
-	iter := s.session.Query("SELECT line_hash FROM LineInfo WHERE line_hash == ?", h).Iter()
-	iter.Scan(&out)
-	if out != -1 {
-		s.session.Query(
-		"INSERT INTO LineInfo (line_hash, num_chars, num_tokens) VALUES (?, ?, ?)",
-		h,
-		nc,
-		nt,
-		).Exec()
-	}
-	err := s.session.Query(
-			"UPDATE KeywordInfo SET count = count + 1 WHERE hash = ?",
-			h).Exec()
-	if err != nil {
-		fmt.Println("Bad update on LineInfo count")
-	}
-}
-
-func (db cassdb) InsertKeywords(h uint32, ln string) {
-	var keyword string
-	keywords := db.session.Query("SELECT keyword FROM KeywordInfo")
-	for iter := keywords().Iter() {
-	  iter.Scan(&keyword)
-		if strings.Contains(ln, keyword) {
-			s.session.Query("UPDATE KeywordInfo SET line_hashes = ? + line_hashes WHERE keyword = ?",
-				hash(ln), keyword).Exec()
-		}
-	}
-}
-*/
 // Should accept streamer, check, continue
 func InsertInfo(s stream, line string) {
 	h := hash(line)
