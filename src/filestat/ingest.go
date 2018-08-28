@@ -8,44 +8,21 @@ import (
 	"log"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 )
 
+type streamer interface {
+		Stream(io.Reader)
+}
 
 type stream struct {
-	io.Reader
-	lines       chan string
-	file        *os.File
-	num_parsers int
-	db          pgdb
-	//db          cassdb
+		lines       chan string
+		db          pgdb
+		//db          cassdb
 }
 
-func Ingest(fname string) {
-	// maybe pass the open file instead
-	f, err := os.Open(fname)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-	nparsers, _ := strconv.Atoi(os.Getenv("NUM_PARSERS"))
-	s := stream{
-		lines:       make(chan string),
-		file:        f,
-		num_parsers: nparsers,
-		db:          NewDBConn(),
-	}
-	defer close(s.lines)
-	var wg sync.WaitGroup
-	wg.Add(nparsers*3 + 2)
-	go startParsers(s)
-	go s.Read()
-	wg.Wait()
-}
-
-func (s stream) Read() {
-	scanner := bufio.NewScanner(s.file)
+func (s stream) Stream(file io.Reader) {
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		s.lines <- scanner.Text()
 	}
@@ -54,10 +31,31 @@ func (s stream) Read() {
 	}
 }
 
-func startParsers(s stream) {
+func Ingest(fname string) {
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	s := stream{
+		lines:       make(chan string),
+		db:          NewDBConn(),
+	}
+	defer close(s.lines)
+	log.Println("Staring subroutines")
+	defer log.Println("Subroutines Finished.")
 	var wg sync.WaitGroup
-	wg.Add(s.num_parsers * 3)
-	for i := 0; i < s.num_parsers; i++ {
+	wg.Add(2)
+	nparsers, _ := strconv.Atoi(os.Getenv("NUM_PARSERS"))
+	go startParsers(s, nparsers)
+	go s.Stream(f)
+	wg.Wait()
+}
+
+func startParsers(s stream, num_parsers int) {
+	var wg sync.WaitGroup
+	wg.Add(num_parsers)
+	for i := 0; i < num_parsers; i++ {
 		go parse(s)
 	}
 	wg.Wait()
@@ -65,16 +63,8 @@ func startParsers(s stream) {
 
 func parse(s stream) {
 	for line := range s.lines {
-		s.InsertInfo(line)
+		InsertInfo(s, line)
 	}
-}
-
-func (s stream) InsertInfo(line string) {
-	h := hash(line)
-	nc := len(line)
-	nt := len(strings.Fields(line))
-	go s.db.InsertCounts(h, nc, nt)
-	go s.db.InsertKeywords(h, line) // could ln be passed as pointer?
 }
 
 func hash(s string) uint32 {

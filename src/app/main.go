@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-		time.Sleep(5 * time.Second)
+		time.Sleep(7 * time.Second)
     http.HandleFunc("/", handle)
 		filestat.SetupDB()
 		fname := "/data/input/simple.txt"
