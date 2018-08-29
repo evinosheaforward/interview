@@ -11,12 +11,12 @@ ENV PATH=$GOPATH/bin:$PATH
 
 
 RUN mkdir -p $GOPATH/src/filestat
-VOLUME ./src/:/go/src/
+#VOLUME ./src/:/go/src/
 # now copy your app to the proper build path
 ADD ./src $GOPATH/src/
 
 RUN  mkdir -p /data/input
-VOLUME ./data/input:/data/input
+#VOLUME ./data/output/summary.txt:/data/output/summary.txt
 ADD ./data /data
 
 # should be able to build now

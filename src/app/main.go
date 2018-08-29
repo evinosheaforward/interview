@@ -12,12 +12,14 @@ import (
 func main() {
 		time.Sleep(7 * time.Second)
     http.HandleFunc("/", handle)
-		filestat.SetupDB()
+		db := filestat.NewDBConn()
+		filestat.SetupDB(db)
 		fname := "/data/input/simple.txt"
-		fmt.Println("Ingesting file: %s", fname)
-		filestat.Ingest(fname)
-    fmt.Println("Listening on :8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
+		fmt.Println("Ingesting file: ", fname)
+		filestat.Ingest(fname, db)
+		time.Sleep(7 * time.Second)
+		filestat.Report(db)
+		log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {

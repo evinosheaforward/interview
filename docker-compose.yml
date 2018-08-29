@@ -15,6 +15,7 @@ services:
     image: interview_app:latest
     volumes:
       - ./src/:/go/src/
+      - ./data/output/summary.txt:/data/output/summary.txt
     working_dir: /go/src/filestat
     env_file:
       - ./postgres/app.env
