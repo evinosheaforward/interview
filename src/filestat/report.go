@@ -9,6 +9,8 @@ import (
 )
 
 func Report(conn dbconn) {
+	stop := StartTimer("Reporting")
+	defer stop()
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go WriteStats(conn, &wg)
@@ -20,6 +22,8 @@ func Report(conn dbconn) {
 // grabs the data with the connection
 // and calls the writeing methods
 func WriteStats(conn dbconn, wg *sync.WaitGroup) {
+	stop := StartTimer("Writing Statistics")
+	defer stop()
 	defer wg.Done()
 	dbWrapper, _ := conn.(pgdb)
 	f, err := os.OpenFile(os.Getenv("OUTFILE"),

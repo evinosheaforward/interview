@@ -2,7 +2,6 @@ package filestat
 
 import (
 	"hash/fnv"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -17,13 +16,12 @@ func IngestFiles(conn *dbconn) {
 	FileStreams(
 		os.Getenv("INPUT_DIR"),
 		fileNames)
-	log.Println("Waiting on recievers.")
 	wg.Wait()
 }
 
 func Ingest(st Streamer, pg *pgdb) {
-	log.Println("Starting ingest subroutines.")
-	defer log.Println("Ingesting finished.")
+	stop := StartTimer("Ingesting file")
+	defer stop()
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go startParsers(st, pg, &wg)
@@ -48,7 +46,6 @@ func startParsers(st Streamer, pg *pgdb, extwg *sync.WaitGroup) {
 // that is what recieves on the channel
 // channel is sent to from inside Stream()
 func parse(s FileStream, pg *pgdb, wg *sync.WaitGroup) {
-	defer log.Println("Parser finished.")
 	defer wg.Done()
 	for line := range s.lines {
 		InsertInfo(pg, &line)

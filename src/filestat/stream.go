@@ -3,7 +3,6 @@ package filestat
 import (
 	"bufio"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"strconv"
@@ -32,7 +31,6 @@ func (s FileStream) Stream() {
 	file, err := os.Open(path.Join(indir, s.fileName))
 	check(err)
 	defer file.Close()
-	log.Println("Filename is: ", s.fileName)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		s.lines <- scanner.Text()
@@ -47,13 +45,13 @@ func FileStreams(indir string, fileNames chan string) {
 	files, err := ioutil.ReadDir(indir)
 	check(err)
 	for _, f := range files {
-		log.Println("Filename should be: ", f.Name())
 		fileNames <- f.Name()
 	}
-	log.Println("Filenames finished streaming.")
 }
 
 func StartRecievers(fileNames *chan string, conn *dbconn, extwg *sync.WaitGroup) {
+	stop := StartTimer("Ingesting all files")
+	defer stop()
 	defer extwg.Done()
 	nReaders, _ := strconv.Atoi(os.Getenv("NUM_FILE_READERS"))
 	var wg sync.WaitGroup
@@ -62,7 +60,6 @@ func StartRecievers(fileNames *chan string, conn *dbconn, extwg *sync.WaitGroup)
 		go recieveFile(fileNames, conn, &wg)
 	}
 	wg.Wait()
-	log.Println("Streams finished.")
 }
 
 func recieveFile(fileNames *chan string, conn *dbconn, wg *sync.WaitGroup) {
@@ -71,12 +68,9 @@ func recieveFile(fileNames *chan string, conn *dbconn, wg *sync.WaitGroup) {
 	pg, _ := c.(pgdb)
 	var s FileStream
 	for fname := range *fileNames {
-		log.Println("Ingesting file: ", fname)
 		s = FileStream{
 			lines: 		make(chan string),
 			fileName: fname,}
 		Ingest(s, &pg)
-		log.Println("Finished ingesting file: ", fname)
 	}
-	log.Println("ingester finished.")
 }
