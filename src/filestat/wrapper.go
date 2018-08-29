@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	//"sync"
 
 	_ "github.com/lib/pq"
 )
 
 type dbconn interface {
-	InsertCounts(uint32, int, int)
-	InsertKeywords(uint32, string)
+	InsertCounts(uint32, int, int)//, *sync.WaitGroup)
+	InsertKeywords(*string)//, *sync.WaitGroup)
 	SelectCounts() lineData
 	SelectKeywords() map[string]int
 }
@@ -21,26 +22,28 @@ type pgdb struct {
 	db *sql.DB
 }
 
-func (pg pgdb) InsertCounts(h uint32, nc int, nt int) {
+func (pg pgdb) InsertCounts(h uint32, nc int, nt int) {//, wg *sync.WaitGroup) {
+	//defer wg.Done()
 	pg.db.Exec(fmt.Sprintf(
 		`INSERT INTO LineInfo
-						(line_hash, line_len, num_tokens, times_found)
-						VALUES (%d, %d, %d, 1)
-				ON CONFLICT (line_hash) DO UPDATE
-						SET times_found = LineInfo.times_found + 1`,
+					(line_hash, line_len, num_tokens, times_found)
+					VALUES (%d, %d, %d, 1)
+			ON CONFLICT (line_hash) DO UPDATE
+					SET times_found = LineInfo.times_found + 1`,
 		h, nc, nt))
 }
 
-func (pg pgdb) InsertKeywords(h uint32, ln string) {
-	var keyword string
+func (pg pgdb) InsertKeywords(ln *string) {//, wg *sync.WaitGroup) {
+	//defer wg.Done()
 	iter, err := pg.db.Query("SELECT keyword FROM KeywordInfo")
 	check(err)
 	defer iter.Close()
+	var keyword string
 	for iter.Next() {
 		if err := iter.Scan(&keyword); err != nil {
 			check(err)
 		}
-		if strings.Contains(strings.ToLower(ln), keyword) {
+		if strings.Contains(strings.ToLower(*ln), keyword) {
 			pg.db.Exec(
 				"UPDATE KeywordInfo SET times_found = times_found + 1 WHERE keyword = $1",
 				keyword)
@@ -116,15 +119,6 @@ func (data lineData) CountDupes() int {
 	return dupeCount
 }
 
-// Should accept streamer, check, continue
-func InsertInfo(s stream, line string) {
-	h := hash(line)
-	nc := len(line)
-	nt := len(strings.Fields(line))
-	go s.db.InsertCounts(h, nc, nt)
-	go s.db.InsertKeywords(h, line) // could ln be passed as pointer?
-}
-
 func SetupDB(conn dbconn) {
 	pg, _ := conn.(pgdb)
 	_, err := pg.db.Exec(
@@ -152,7 +146,7 @@ func SetupKeywords(db *sql.DB) {
 	}
 }
 
-func NewDBConn() pgdb { //cassdb {
+func NewDBConn() dbconn { //cassdb {
 	//return NewCassDB()
 	return NewPGDB()
 }

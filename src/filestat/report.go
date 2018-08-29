@@ -8,26 +8,26 @@ import (
 	"sync"
 )
 
-func Report(db dbconn) {
-	conn, _ := db.(pgdb)
-	// slight speedup (depending on bottleneck)
+func Report(conn dbconn) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go WriteStats(conn, &wg)
-	kwds := conn.SelectKeywords()
-	wg.Wait()
-	WriteKeywords(kwds)
+	WriteKeywords(conn, &wg)
 	log.Println("Report Finished.")
 }
 
+// This function does the heavy lifting
+// grabs the data with the connection
+// and calls the writeing methods
 func WriteStats(conn dbconn, wg *sync.WaitGroup) {
-	db, _ := conn.(pgdb)
+	defer wg.Done()
+	dbWrapper, _ := conn.(pgdb)
 	f, err := os.OpenFile(os.Getenv("OUTFILE"),
 		os.O_WRONLY,
 		0644)
 	check(err)
 	defer f.Close()
-	countData := db.SelectCounts()
+	countData := dbWrapper.SelectCounts()
 	lenData := make(statData, len(countData))
 	tokenData := make(statData, len(countData))
 	for i, countDatum := range countData {
@@ -41,9 +41,9 @@ func WriteStats(conn dbconn, wg *sync.WaitGroup) {
 	WriteDupes(countData, f)
 	WriteMedStd(lenData, f, "length")
 	WriteMedStd(tokenData, f, "tokens")
-	wg.Done()
 }
 
+// This is fine for memory because its not being copied
 func WriteDupes(countData lineData, f *os.File) {
 	outline := fmt.Sprintf("num dupes\t%d\n", countData.CountDupes())
 	if _, err := f.WriteString(outline); err != nil {
@@ -51,6 +51,7 @@ func WriteDupes(countData lineData, f *os.File) {
 	}
 }
 
+// This function just calculates the Std and Med and writes them to file
 func WriteMedStd(data statData, f *os.File, name string) {
 	outline := fmt.Sprintf("med %s\t%f\n", name, Median(data))
 	if _, err := f.WriteString(outline); err != nil {
@@ -62,7 +63,13 @@ func WriteMedStd(data statData, f *os.File, name string) {
 	}
 }
 
-func WriteKeywords(kwds map[string]int) {
+// Waits on the other writer
+// Get the keywords from the database,
+// sort the keys, then write the data.
+func WriteKeywords(conn dbconn, wg *sync.WaitGroup) {
+	dbWrapper, _ := conn.(pgdb)
+	kwds := dbWrapper.SelectKeywords()
+	wg.Wait()
 	f, err := os.OpenFile(os.Getenv("OUTFILE"),
 		os.O_APPEND|os.O_WRONLY,
 		os.ModeAppend)

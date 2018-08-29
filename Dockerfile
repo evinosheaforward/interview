@@ -15,9 +15,9 @@ RUN mkdir -p $GOPATH/src/filestat
 # now copy your app to the proper build path
 ADD ./src $GOPATH/src/
 
-RUN  mkdir -p /data/input
-#VOLUME ./data/output/summary.txt:/data/output/summary.txt
-ADD ./data /data
+RUN  mkdir -p /data/input/newsgroups_spacesci/
+ADD ./data/input/keywords.txt /data/input/keywords.txt
+ADD ./data/input/newsgroups_spacesci/ /data/input/newsgroups_spacesci/
 
 # should be able to build now
 WORKDIR $GOPATH/src/filestat
