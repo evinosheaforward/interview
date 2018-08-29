@@ -18,7 +18,7 @@ services:
       - ./data/output/summary.txt:/data/output/summary.txt
     working_dir: /go/src/filestat
     env_file:
-      - ./postgres/app.env
+      - ./app.env
     depends_on:
       - db
     links:
