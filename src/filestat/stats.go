@@ -1,7 +1,6 @@
 package filestat
 
 import (
-	"log"
 	"math"
 	"sort"
 )
@@ -28,7 +27,6 @@ func Std(data statData) float64 {
 		varTot += float64(datum.count) * math.Pow(mean-float64(datum.val), 2.0)
 		n += float64(datum.count)
 	}
-	log.Println("STD", data, varTot, n)
 	return math.Sqrt(varTot / (n - 1))
 }
 
@@ -44,30 +42,17 @@ func Median(data statData) float64 {
 	n := data.N()
 	vals := make([]int, n)
 	idx := 0
-	log.Print("Data", data)
 	for _, datum := range data {
-		log.Print("Datum", datum, idx)
 		for i := 0; i < datum.count; i++ {
 			vals[idx] = datum.val
 			idx++
 		}
 	}
-	log.Println("idx", idx, n)
-	if n == 0 {
-		log.Println("No data? ", data, n)
-		return 0.0
-	}
-	if n == 1 {
-		log.Println("One datum", data, n)
-		return float64(vals[0])
-	}
-	log.Println(vals)
 	sort.Ints(vals)
-	log.Println(vals, LowerIdx(n), UpperIdx(n))
-	if !Even(n) {
-		return float64(vals[LowerIdx(n)])
+	if Even(n) {
+		return float64(vals[LowerIdx(n)]+vals[UpperIdx(n)]) / 2.0
 	}
-	return float64(vals[LowerIdx(n)]+vals[UpperIdx(n)]) / 2.0
+	return float64(vals[LowerIdx(n)])
 }
 
 func UpperIdx(n int) int {

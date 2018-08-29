@@ -30,7 +30,6 @@ func WriteStats(conn dbconn, wg *sync.WaitGroup) {
 	countData := db.SelectCounts()
 	lenData := make(statData, len(countData))
 	tokenData := make(statData, len(countData))
-	log.Println("countData", countData)
 	for i, countDatum := range countData {
 		lenData[i] = statDatum{
 			countDatum.NumChars(),
@@ -64,15 +63,16 @@ func WriteMedStd(data statData, f *os.File, name string) {
 }
 
 func WriteKeywords(kwds map[string]int) {
-	log.Println("KWDS", kwds)
 	f, err := os.OpenFile(os.Getenv("OUTFILE"),
 		os.O_APPEND|os.O_WRONLY,
 		os.ModeAppend)
 	check(err)
 	defer f.Close()
 	keys := make([]string, len(kwds))
+	idx := 0
 	for k, _ := range kwds {
-		keys = append(keys, k)
+		keys[idx] = k
+		idx++
 	}
 	sort.Strings(keys)
 	var outline string

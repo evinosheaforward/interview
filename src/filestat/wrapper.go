@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -35,10 +34,7 @@ func (pg pgdb) InsertCounts(h uint32, nc int, nt int) {
 func (pg pgdb) InsertKeywords(h uint32, ln string) {
 	var keyword string
 	iter, err := pg.db.Query("SELECT keyword FROM KeywordInfo")
-	if err != nil {
-		log.Fatal(err)
-		panic(err)
-	}
+	check(err)
 	defer iter.Close()
 	for iter.Next() {
 		if err := iter.Scan(&keyword); err != nil {
@@ -71,7 +67,6 @@ func (pg pgdb) SelectCounts() lineData {
 			numTokens: nt,
 			count:     n})
 	}
-	log.Println(data)
 	return data
 }
 
@@ -88,7 +83,6 @@ func (pg pgdb) SelectKeywords() map[string]int {
 		}
 		m[keyword] = times_found
 	}
-	log.Println(m)
 	return m
 }
 
