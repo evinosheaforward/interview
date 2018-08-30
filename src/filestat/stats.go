@@ -56,11 +56,11 @@ func Median(data statData) float64 {
 }
 
 func UpperIdx(n int) int {
-	return int(math.Ceil(float64(n) / 2.0))
+	return int(math.Ceil(float64(n-1) / 2.0))
 }
 
 func LowerIdx(n int) int {
-	return int(math.Floor(float64(n) / 2.0))
+	return int(math.Floor(float64(n-1) / 2.0))
 }
 
 func Even(number int) bool {

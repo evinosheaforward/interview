@@ -39,7 +39,7 @@ func (s FileStream) Stream() {
 		check(err)
 	}
 }
-
+// Stream the filenames to the recievers, close the channel
 func FileStreams(indir string, fileNames chan string) {
 	defer close(fileNames)
 	files, err := ioutil.ReadDir(indir)
@@ -49,6 +49,7 @@ func FileStreams(indir string, fileNames chan string) {
 	}
 }
 
+// Starts the file readers and passes the fileNames channel along
 func StartRecievers(fileNames *chan string, conn *dbconn, extwg *sync.WaitGroup) {
 	stop := StartTimer("Ingesting all files")
 	defer stop()

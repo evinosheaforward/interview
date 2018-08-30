@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// Concurrently grab filenames and send them to be parsed
 func IngestFiles(conn *dbconn) {
 	fileNames := make(chan string)
 	var wg sync.WaitGroup
